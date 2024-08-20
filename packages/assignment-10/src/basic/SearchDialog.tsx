@@ -1,7 +1,5 @@
 import {
   Box,
-  Checkbox,
-  CheckboxGroup,
   FormControl,
   FormLabel,
   HStack,
@@ -13,29 +11,26 @@ import {
   ModalHeader,
   ModalOverlay,
   Select,
-  Stack,
   Table,
-  Tag,
-  TagCloseButton,
-  TagLabel,
   Tbody,
   Text,
   Th,
   Thead,
   Tr,
   VStack,
-  Wrap,
 } from "@chakra-ui/react";
-import axios, { AxiosResponse } from "axios";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DAY_LABELS } from "./constants.ts";
-import MajorSelectForm from "./MajorSelectForm.tsx";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useScheduleContext } from "./ScheduleContext.tsx";
+import DateSelectForm from "./select-components/DateSelectForm.tsx";
+import GradeSelectForm from "./select-components/GradeSelectForm.tsx";
+import MajorSelectForm from "./select-components/MajorSelectForm.tsx";
+import TimeSelectForm from "./select-components/TimeSelectForm.tsx";
 import { Lecture } from "./types.ts";
 import { parseSchedule } from "./utils.ts";
 import VisibleLectureRow from "./VisibleLectureRow.tsx";
 
 interface Props {
+  lectures: Lecture[];
   searchInfo: {
     tableId: string;
     day?: string;
@@ -53,73 +48,13 @@ export interface SearchOption {
   credits?: number;
 }
 
-const TIME_SLOTS = [
-  { id: 1, label: "09:00~09:30" },
-  { id: 2, label: "09:30~10:00" },
-  { id: 3, label: "10:00~10:30" },
-  { id: 4, label: "10:30~11:00" },
-  { id: 5, label: "11:00~11:30" },
-  { id: 6, label: "11:30~12:00" },
-  { id: 7, label: "12:00~12:30" },
-  { id: 8, label: "12:30~13:00" },
-  { id: 9, label: "13:00~13:30" },
-  { id: 10, label: "13:30~14:00" },
-  { id: 11, label: "14:00~14:30" },
-  { id: 12, label: "14:30~15:00" },
-  { id: 13, label: "15:00~15:30" },
-  { id: 14, label: "15:30~16:00" },
-  { id: 15, label: "16:00~16:30" },
-  { id: 16, label: "16:30~17:00" },
-  { id: 17, label: "17:00~17:30" },
-  { id: 18, label: "17:30~18:00" },
-  { id: 19, label: "18:00~18:50" },
-  { id: 20, label: "18:55~19:45" },
-  { id: 21, label: "19:50~20:40" },
-  { id: 22, label: "20:45~21:35" },
-  { id: 23, label: "21:40~22:30" },
-  { id: 24, label: "22:35~23:25" },
-];
-
 const PAGE_SIZE = 100;
 
-const fetchMajors = (() => {
-  let axiosResult: Promise<AxiosResponse<Lecture[]>> | null = null;
-  return () => {
-    if (!axiosResult) {
-      axiosResult = axios.get<Lecture[]>("/schedules-majors.json");
-    }
-    return axiosResult;
-  };
-})();
-const fetchLiberalArts = (() => {
-  let axiosResult: Promise<AxiosResponse<Lecture[]>> | null = null;
-  return () => {
-    if (!axiosResult) {
-      axiosResult = axios.get<Lecture[]>("/schedules-liberal-arts.json");
-    }
-    return axiosResult;
-  };
-})();
-
-const fetchAllLectures = async () =>
-  await Promise.all([
-    (console.log("API Call 1", performance.now()), fetchMajors()),
-    (console.log("API Call 2", performance.now()), fetchLiberalArts()),
-    (console.log("API Call 3", performance.now()), fetchMajors()),
-    (console.log("API Call 4", performance.now()), fetchLiberalArts()),
-    (console.log("API Call 5", performance.now()), fetchMajors()),
-    (console.log("API Call 6", performance.now()), fetchLiberalArts()),
-  ]);
-
-const MemoMajorSelectTable = memo(MajorSelectForm);
-const MemoVisibleLecutreRow = memo(VisibleLectureRow);
-
-const SearchDialog = ({ searchInfo, onClose }: Props) => {
+const SearchDialog = ({ lectures, searchInfo, onClose }: Props) => {
   const { setSchedulesMap } = useScheduleContext();
 
   const loaderWrapperRef = useRef<HTMLDivElement>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
-  const [lectures, setLectures] = useState<Lecture[]>([]);
   const [page, setPage] = useState(1);
   const [searchOptions, setSearchOptions] = useState<SearchOption>({
     query: "",
@@ -129,7 +64,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
     majors: [],
   });
 
-  const getFilteredLectures = useMemo(() => {
+  const filteredLectures = useMemo(() => {
     const { query = "", credits, grades, days, times, majors } = searchOptions;
     return lectures
       .filter(
@@ -155,8 +90,6 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
         return schedules.some((s) => s.range.some((time) => times.includes(time)));
       });
   }, [searchOptions]);
-
-  const filteredLectures = getFilteredLectures;
 
   const lastPage = Math.ceil(filteredLectures.length / PAGE_SIZE);
   const visibleLectures = filteredLectures.slice(0, page * PAGE_SIZE);
@@ -190,17 +123,6 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
     }));
 
     onClose();
-  }, []);
-
-  useEffect(() => {
-    const start = performance.now();
-    console.log("API 호출 시작: ", start);
-    fetchAllLectures().then((results) => {
-      const end = performance.now();
-      console.log("모든 API 호출 완료 ", end);
-      console.log("API 호출에 걸린 시간(ms): ", end - start);
-      setLectures(results.flatMap((result) => result.data));
-    });
   }, []);
 
   useEffect(() => {
@@ -267,87 +189,24 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
             </HStack>
 
             <HStack spacing={4}>
-              <FormControl>
-                <FormLabel>학년</FormLabel>
-                <CheckboxGroup
-                  value={searchOptions.grades}
-                  onChange={(value) => changeSearchOption("grades", value.map(Number))}
-                >
-                  <HStack spacing={4}>
-                    {[1, 2, 3, 4].map((grade) => (
-                      <Checkbox key={grade} value={grade}>
-                        {grade}학년
-                      </Checkbox>
-                    ))}
-                  </HStack>
-                </CheckboxGroup>
-              </FormControl>
-
-              <FormControl>
-                <FormLabel>요일</FormLabel>
-                <CheckboxGroup
-                  value={searchOptions.days}
-                  onChange={(value) => changeSearchOption("days", value as string[])}
-                >
-                  <HStack spacing={4}>
-                    {DAY_LABELS.map((day) => (
-                      <Checkbox key={day} value={day}>
-                        {day}
-                      </Checkbox>
-                    ))}
-                  </HStack>
-                </CheckboxGroup>
-              </FormControl>
+              <GradeSelectForm
+                selectedGrades={searchOptions.grades}
+                changeSearchOption={changeSearchOption}
+              />
+              <DateSelectForm
+                selectedDays={searchOptions.days}
+                changeSearchOption={changeSearchOption}
+              />
             </HStack>
 
             <HStack spacing={4}>
-              <FormControl>
-                <FormLabel>시간</FormLabel>
-                <CheckboxGroup
-                  colorScheme="green"
-                  value={searchOptions.times}
-                  onChange={(values) => changeSearchOption("times", values.map(Number))}
-                >
-                  <Wrap spacing={1} mb={2}>
-                    {searchOptions.times
-                      .sort((a, b) => a - b)
-                      .map((time) => (
-                        <Tag key={time} size="sm" variant="outline" colorScheme="blue">
-                          <TagLabel>{time}교시</TagLabel>
-                          <TagCloseButton
-                            onClick={() =>
-                              changeSearchOption(
-                                "times",
-                                searchOptions.times.filter((v) => v !== time)
-                              )
-                            }
-                          />
-                        </Tag>
-                      ))}
-                  </Wrap>
-                  <Stack
-                    spacing={2}
-                    overflowY="auto"
-                    h="100px"
-                    border="1px solid"
-                    borderColor="gray.200"
-                    borderRadius={5}
-                    p={2}
-                  >
-                    {TIME_SLOTS.map(({ id, label }) => (
-                      <Box key={id}>
-                        <Checkbox key={id} size="sm" value={id}>
-                          {id}교시({label})
-                        </Checkbox>
-                      </Box>
-                    ))}
-                  </Stack>
-                </CheckboxGroup>
-              </FormControl>
-
-              <MemoMajorSelectTable
+              <TimeSelectForm
+                selectedTimes={searchOptions.times}
+                changeSearchOption={changeSearchOption}
+              />
+              <MajorSelectForm
                 allMajors={allMajors}
-                majors={searchOptions.majors}
+                selectedMajors={searchOptions.majors}
                 changeSearchOption={changeSearchOption}
               />
             </HStack>
@@ -371,7 +230,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <Table size="sm" variant="striped">
                   <Tbody>
                     {visibleLectures.map((lecture, index) => (
-                      <MemoVisibleLecutreRow
+                      <VisibleLectureRow
                         key={`${lecture.id}-${index}`}
                         lecture={lecture}
                         addSchedule={addSchedule}

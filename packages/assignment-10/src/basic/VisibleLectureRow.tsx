@@ -1,11 +1,12 @@
 import { Button, Td, Tr } from "@chakra-ui/react";
 import { Lecture } from "./types";
+import { memo } from "react";
 
 type Props = {
   lecture: Lecture;
   addSchedule: (lecture: Lecture) => void;
 };
-export default function VisibleLectureRow({ lecture, addSchedule }: Props) {
+const VisibleLectureRow = ({ lecture, addSchedule }: Props) => {
   const { id, grade, title, credits, major, schedule } = lecture;
 
   return (
@@ -23,4 +24,5 @@ export default function VisibleLectureRow({ lecture, addSchedule }: Props) {
       </Td>
     </Tr>
   );
-}
+};
+export default memo(VisibleLectureRow);

@@ -2,8 +2,38 @@ import { Button, ButtonGroup, Flex, Heading, Stack } from "@chakra-ui/react";
 import ScheduleTable from "./ScheduleTable.tsx";
 import { useScheduleContext } from "./ScheduleContext.tsx";
 import SearchDialog from "./SearchDialog.tsx";
-import { memo, useState } from "react";
-import { Schedule } from "./types.ts";
+import { memo, useEffect, useState } from "react";
+import { Lecture, Schedule } from "./types.ts";
+import axios, { AxiosResponse } from "axios";
+
+const fetchMajors = (() => {
+  let axiosResult: Promise<AxiosResponse<Lecture[]>> | null = null;
+  return () => {
+    if (!axiosResult) {
+      axiosResult = axios.get<Lecture[]>("/schedules-majors.json");
+    }
+    return axiosResult;
+  };
+})();
+const fetchLiberalArts = (() => {
+  let axiosResult: Promise<AxiosResponse<Lecture[]>> | null = null;
+  return () => {
+    if (!axiosResult) {
+      axiosResult = axios.get<Lecture[]>("/schedules-liberal-arts.json");
+    }
+    return axiosResult;
+  };
+})();
+
+const fetchAllLectures = async () =>
+  await Promise.all([
+    (console.log("API Call 1", performance.now()), fetchMajors()),
+    (console.log("API Call 2", performance.now()), fetchLiberalArts()),
+    (console.log("API Call 3", performance.now()), fetchMajors()),
+    (console.log("API Call 4", performance.now()), fetchLiberalArts()),
+    (console.log("API Call 5", performance.now()), fetchMajors()),
+    (console.log("API Call 6", performance.now()), fetchLiberalArts()),
+  ]);
 
 export const ScheduleTables = () => {
   const { schedulesMap, setSchedulesMap } = useScheduleContext();
@@ -75,6 +105,14 @@ export const ScheduleTables = () => {
     );
   });
 
+  const [lectures, setLectures] = useState<Lecture[]>([]);
+
+  useEffect(() => {
+    fetchAllLectures().then((results) => {
+      setLectures(results.flatMap((result) => result.data));
+    });
+  }, []);
+
   return (
     <>
       <Flex w="full" gap={6} p={6} flexWrap="wrap">
@@ -82,7 +120,11 @@ export const ScheduleTables = () => {
           <MemoScheduleTable key={tableId} tableId={tableId} schedules={schedules} index={index} />
         ))}
       </Flex>
-      <SearchDialog searchInfo={searchInfo} onClose={() => setSearchInfo(null)} />
+      <SearchDialog
+        lectures={lectures}
+        searchInfo={searchInfo}
+        onClose={() => setSearchInfo(null)}
+      />
     </>
   );
 };

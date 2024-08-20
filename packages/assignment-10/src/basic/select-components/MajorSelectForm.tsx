@@ -10,31 +10,34 @@ import {
   TagLabel,
   Wrap,
 } from "@chakra-ui/react";
-import { SearchOption } from "./SearchDialog";
+import { SearchOption } from "../SearchDialog";
+import { memo } from "react";
 
 type Props = {
-  majors: string[];
+  selectedMajors: string[];
   allMajors: string[];
   changeSearchOption: (field: keyof SearchOption, value: SearchOption[typeof field]) => void;
 };
-export default function MajorSelectForm({ majors, allMajors, changeSearchOption }: Props) {
+const MajorSelectForm = (props: Props) => {
+  const { selectedMajors, allMajors, changeSearchOption } = props;
+
   return (
     <FormControl>
       <FormLabel>전공</FormLabel>
       <CheckboxGroup
         colorScheme="green"
-        value={majors}
+        value={selectedMajors}
         onChange={(values) => changeSearchOption("majors", values as string[])}
       >
         <Wrap spacing={1} mb={2}>
-          {majors.map((major) => (
+          {selectedMajors.map((major) => (
             <Tag key={major} size="sm" variant="outline" colorScheme="blue">
               <TagLabel>{major.split("<p>").pop()}</TagLabel>
               <TagCloseButton
                 onClick={() =>
                   changeSearchOption(
                     "majors",
-                    majors.filter((v) => v !== major)
+                    selectedMajors.filter((v) => v !== major)
                   )
                 }
               />
@@ -61,4 +64,6 @@ export default function MajorSelectForm({ majors, allMajors, changeSearchOption 
       </CheckboxGroup>
     </FormControl>
   );
-}
+};
+
+export default memo(MajorSelectForm);
